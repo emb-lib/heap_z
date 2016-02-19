@@ -67,9 +67,9 @@ class heap
 public:
     // Heap initialization
     template<size_t size_items>
-    heap(uint32_t (& pool)[size_items]) : heap(pool, size_items) {}
+    heap(uint32_t (& pool)[size_items]);
 
-    heap(uint32_t * pool, int size_items);
+    heap(uint32_t * pool, int size_bytes);
 
     // Attach separate memory pool to the heap
     void add(void * pool, int size );
@@ -142,6 +142,7 @@ private:
         void * pool() { return this + 1; }
     };
 
+    void init(mcb * pstart, size_t size_bytes);
     //--------------------------------------------------------------------------
     // Heap descriptors 
     //--------------------------------------------------------------------------
@@ -152,6 +153,14 @@ private:
     OS::TMutex  Mutex;     // thread safe support for scmRTOS. In case of other RTOS or
                            // if the project is 'RTOSless' this realization has to be fixed
 };
+
+template<size_t size_items>
+heap::heap(uint32_t (& pool)[size_items])
+: start((mcb *)pool)
+, freemem((mcb *)pool)
+{
+    init(start, sizeof(pool));
+}
 
 //------------------------------------------------------------------------------
 extern heap Heap;

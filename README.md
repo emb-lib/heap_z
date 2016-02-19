@@ -13,7 +13,8 @@ Memory pool located in the section '.heap'.
 The second, declare heap object:
 
 ```C++
-heap Heap(HeapPool, sizeof(HeapPool)/sizeof(uint32_t));                
+heap Heap(HeapPool, sizeof(HeapPool));                
 ```
+or
 
 That's all, heap functions can be used in usual manner.
