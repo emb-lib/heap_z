@@ -95,23 +95,26 @@ extern "C" void * _sbrk(size_t n)
 //------------------------------------------------------------------------------
 // Heap initialization
 //------------------------------------------------------------------------------
-heap::heap(uint32_t * pool, int size_items)
+heap::heap(uint32_t * pool, int size_bytes)
 : start((mcb *)pool)
 , freemem((mcb *)pool)
 {
-    mcb *fmcb = start;
+    init(start, size_bytes);
+}
 
+void heap::init(mcb * pstart, size_t size_bytes)
+{
     // Circular pattern 
-    fmcb->next = fmcb;
+    pstart->next = pstart;
 
     // Pointer to previous MCB points to itself
-    fmcb->prev = fmcb;
+    pstart->prev = pstart;
 
     // ASA size
-    fmcb->ts.size = size_items * sizeof(*pool) - sizeof(mcb);
+    pstart->ts.size = size_bytes - sizeof(mcb);
     
     // Set memory chunk free
-    fmcb->ts.type = mcb::FREE;
+    pstart->ts.type = mcb::FREE;
 
     // After initialization, heap is one free memory chunk with 
     // ASA size = sizeof(heap) - sizeof(MCB)
