@@ -23,7 +23,7 @@ The second, declare heap object:
 ```C++
 heap Heap(HeapPool, sizeof(HeapPool));
 ```
-Or if memory pool object declared in the same scope (i.e. type and size of the object are known), there is more short alternativ:e
+Or if memory pool object declared in the same scope (i.e. type and size of the object are known), there is more short alternative:
 ```C++
 heap Heap(HeapPool);
 ```
