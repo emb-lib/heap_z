@@ -32,7 +32,7 @@
 #ifndef HEAP_H__
 #define HEAP_H__
 
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  Terms
 //  ~~~~~
 //           
@@ -55,7 +55,7 @@
 // 
 //  mcb.next of the last MCB always points to the first MCB (circular pattern).
 //  mcb.prev of the first MCB points to itself.
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 
 #include <stdint.h>
@@ -138,7 +138,7 @@ private:
         };
 
         mcb *next;         // pointer to the next MCB                                             
-                           // mcb.next of the last MCB always pounts to                           
+                           // mcb.next of the last MCB always points to                           
                            // the first MCB                                                       
         mcb *prev;         // pointer to previous MCB                                             
                            // the first MCB always pounts to itself                               

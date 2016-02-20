@@ -30,7 +30,7 @@
 //*
 //*-----------------------------------------------------------------------------
 
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  Terms
 //  ~~~~~
 //           
@@ -53,13 +53,14 @@
 // 
 //  mcb.next of the last MCB always points to the first MCB (circular pattern).
 //  mcb.prev of the first MCB points to itself.
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <new>
 #include "heap.h"
 
+//------------------------------------------------------------------------------
 extern std::nothrow_t const std::nothrow = {};
 
 void * operator new(size_t size, std::nothrow_t const &)
@@ -72,7 +73,7 @@ void * operator new(size_t size)
     return Heap.malloc(size);
 }
 
-void operator delete(void * ptr)     // delete allocated storage
+void operator delete(void * ptr)         // delete allocated storage
 {
     Heap.free(ptr);
 }
@@ -86,29 +87,21 @@ extern "C" void free(void * ptr)
 {
     Heap.free(ptr);
 }
-/*
-extern "C" void * _sbrk(size_t n)
-{
-    return 0;
-}
-*/
-
-/*
+//------------------------------------------------------------------------------
 void heap::add(void * pool, int size )
 {
     mcb *xptr = (mcb *)pool;
     mcb *tptr = freemem;
-    // Формирование нового MCB в блоке
+    
+    // Init MCB in new chunk
     xptr->next = tptr;
-    xptr->prev = tptr;
+    xptr->prev = xptr;                   // the first mcb in pool always points to itself
     xptr->ts.size = size - sizeof(mcb);
     xptr->ts.type = mcb::FREE;
     // Reinit Primary MCB
     tptr->next = xptr;
-    xptr->prev = xptr; //?????
 }
-*/
-
+//------------------------------------------------------------------------------
 template<typename locker>
 typename heap<locker>::mcb * heap<locker>::mcb::split(size_t size, heap<locker>::mcb * start)
 {
@@ -131,8 +124,6 @@ typename heap<locker>::mcb * heap<locker>::mcb::split(size_t size, heap<locker>:
     return new_mcb;
 }
 
-//------------------------------------------------------------------------------
-// malloc()
 //------------------------------------------------------------------------------
 template<typename locker>
 void * heap<locker>::malloc( size_t size )
@@ -229,8 +220,6 @@ void heap<locker>::mcb::merge_with_next(mcb * start)
 
 }
 //------------------------------------------------------------------------------
-// free()
-//------------------------------------------------------------------------------
 template<typename locker>
 void heap<locker>::free(void *pool )
 {
@@ -277,7 +266,7 @@ void heap<locker>::free(void *pool )
     if( tptr < freemem )        // Is freed chunk located berore the fisrt one that was considered free?
         freemem = tptr;         // Update free chunk pointer
 }
-
+//------------------------------------------------------------------------------
 template<typename locker>
 typename heap<locker>::summary  heap<locker>::info()
 {
