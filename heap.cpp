@@ -88,7 +88,8 @@ extern "C" void free(void * ptr)
     Heap.free(ptr);
 }
 //------------------------------------------------------------------------------
-void heap::add(void * pool, int size )
+template<typename guard>
+void heap<guard>::add(void * pool, int size )
 {
     mcb *xptr = (mcb *)pool;
     mcb *tptr = freemem;
@@ -102,8 +103,8 @@ void heap::add(void * pool, int size )
     tptr->next = xptr;
 }
 //------------------------------------------------------------------------------
-template<typename locker>
-typename heap<locker>::mcb * heap<locker>::mcb::split(size_t size, heap<locker>::mcb * start)
+template<typename guard>
+typename heap<guard>::mcb * heap<guard>::mcb::split(size_t size, heap<guard>::mcb * start)
 {
     uintptr_t new_mcb_addr = (uintptr_t)this + size;
     mcb *new_mcb = (mcb *)new_mcb_addr;
@@ -125,8 +126,8 @@ typename heap<locker>::mcb * heap<locker>::mcb::split(size_t size, heap<locker>:
 }
 
 //------------------------------------------------------------------------------
-template<typename locker>
-void * heap<locker>::malloc( size_t size )
+template<typename guard>
+void * heap<guard>::malloc( size_t size )
 {
     // add mcb size and round up to HEAP_ALIGN
     size = (size + sizeof(mcb) + ( HEAP_ALIGN - 1 )) & ~( HEAP_ALIGN - 1 );
@@ -138,8 +139,7 @@ void * heap<locker>::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    //OS::TMutexLocker Lock(Mutex);
-    guard<locker> guard(Mutex);
+    scope_guard<guard> Guard(Mutex);
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
@@ -205,8 +205,8 @@ void * heap<locker>::malloc( size_t size )
     return Allocated;
 }
 
-template<typename locker>
-void heap<locker>::mcb::merge_with_next(mcb * start)
+template<typename guard>
+void heap<guard>::mcb::merge_with_next(mcb * start)
 {
     // Check Next MCB
     mcb* other = next;
@@ -220,8 +220,8 @@ void heap<locker>::mcb::merge_with_next(mcb * start)
 
 }
 //------------------------------------------------------------------------------
-template<typename locker>
-void heap<locker>::free(void *pool )
+template<typename guard>
+void heap<guard>::free(void *pool )
 {
     // All pointer values should be checked to hit in RAM, otherwise an exception can occur
     
@@ -267,8 +267,8 @@ void heap<locker>::free(void *pool )
         freemem = tptr;         // Update free chunk pointer
 }
 //------------------------------------------------------------------------------
-template<typename locker>
-typename heap<locker>::summary  heap<locker>::info()
+template<typename guard>
+typename heap<guard>::summary  heap<guard>::info()
 {
     summary Result =
     {
@@ -276,7 +276,7 @@ typename heap<locker>::summary  heap<locker>::info()
         { 0, 0, 0 }
     };
 
-    OS::TMutexLocker Lock(Mutex);
+    scope_guard<guard> Guard(Mutex);
     mcb *pBlock = freemem;
     do
     {

@@ -65,17 +65,17 @@
 
 //------------------------------------------------------------------------------
 template <typename mutex>
-class guard
+class scope_guard
 {
 public:
-    guard(mutex& m): mx(m) { mx.lock(); }
-    ~guard() { mx.unlock(); }
+    scope_guard(mutex& m): mx(m) { mx.lock(); }
+    ~scope_guard() { mx.unlock(); }
 private:
     mutex & mx;
 };
 
 //------------------------------------------------------------------------------
-template <typename locker>
+template <typename guard>
 class heap 
 {
 public:
@@ -164,13 +164,13 @@ private:
                            
     mcb *freemem;          // pointer to the first free MCB      
                            
-    locker Mutex;         // thread-safe support 
+    guard Mutex;           // thread-safe support 
                            
 };
 
-template<typename locker>
+template<typename guard>
 template<size_t size_items>
-heap<locker>::heap(uint32_t (& pool)[size_items])
+heap<guard>::heap(uint32_t (& pool)[size_items])
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Mutex()
@@ -181,8 +181,8 @@ heap<locker>::heap(uint32_t (& pool)[size_items])
 //------------------------------------------------------------------------------
 // Heap initialization
 //------------------------------------------------------------------------------
-template<typename locker>
-heap<locker>::heap(uint32_t * pool, int size_bytes)
+template<typename guard>
+heap<guard>::heap(uint32_t * pool, int size_bytes)
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Mutex()
@@ -190,8 +190,8 @@ heap<locker>::heap(uint32_t * pool, int size_bytes)
     init(start, size_bytes);
 }
 
-template<typename locker>
-void heap<locker>::init(mcb * pstart, size_t size_bytes)
+template<typename guard>
+void heap<guard>::init(mcb * pstart, size_t size_bytes)
 {
     // Circular pattern 
     pstart->next = pstart;
@@ -210,7 +210,7 @@ void heap<locker>::init(mcb * pstart, size_t size_bytes)
 }
 
 //------------------------------------------------------------------------------
-extern heap<TLocker> Heap;
+extern heap<heap_guard> Heap;
 //------------------------------------------------------------------------------
 #endif  // HEAP_H__
 
