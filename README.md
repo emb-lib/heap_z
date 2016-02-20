@@ -23,4 +23,4 @@ heap<heap_guard> Heap(HeapPool);
 That's all, heap functions (malloc(), free(), new , delete etc.) can be used in ordinary manner.
 
 <hr>
-<a name="footnote1"></a>[1] See [description for details](https://github.com/emb-lib/heap_z/wiki/Zltigo-heap-manager-wiki)
+<a name="footnote1"></a>[1] See [description for details](https://github.com/emb-lib/heap_z/wiki/thread-safe guard configuration)
