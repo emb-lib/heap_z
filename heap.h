@@ -60,9 +60,23 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <scmRTOS.h>
+#include "heapcfg.h"
+
+
 //------------------------------------------------------------------------------
-class heap
+template <typename mutex>
+class guard
+{
+public:
+    guard(mutex& m): mx(m) { mx.lock(); }
+    ~guard() { mx.unlock(); }
+private:
+    mutex & mx;
+};
+
+//------------------------------------------------------------------------------
+template <typename locker>
+class heap 
 {
 public:
     // Heap initialization
@@ -150,20 +164,53 @@ private:
                            
     mcb *freemem;          // pointer to the first free MCB      
                            
-    OS::TMutex  Mutex;     // thread safe support for scmRTOS. In case of other RTOS or
-                           // if the project is 'RTOSless' this realization has to be fixed
+    locker Mutex;         // thread-safe support 
+                           
 };
 
+template<typename locker>
 template<size_t size_items>
-heap::heap(uint32_t (& pool)[size_items])
-: start((mcb *)pool)
-, freemem((mcb *)pool)
+heap<locker>::heap(uint32_t (& pool)[size_items])
+    : start((mcb *)pool)
+    , freemem((mcb *)pool)
+    , Mutex()
 {
     init(start, sizeof(pool));
 }
 
 //------------------------------------------------------------------------------
-extern heap Heap;
+// Heap initialization
+//------------------------------------------------------------------------------
+template<typename locker>
+heap<locker>::heap(uint32_t * pool, int size_bytes)
+    : start((mcb *)pool)
+    , freemem((mcb *)pool)
+    , Mutex()
+{
+    init(start, size_bytes);
+}
+
+template<typename locker>
+void heap<locker>::init(mcb * pstart, size_t size_bytes)
+{
+    // Circular pattern 
+    pstart->next = pstart;
+
+    // Pointer to previous MCB points to itself
+    pstart->prev = pstart;
+
+    // ASA size
+    pstart->ts.size = size_bytes - sizeof(mcb);
+    
+    // Set memory chunk free
+    pstart->ts.type = mcb::FREE;
+
+    // After initialization, heap is one free memory chunk with 
+    // ASA size = sizeof(heap) - sizeof(MCB)
+}
+
+//------------------------------------------------------------------------------
+extern heap<TLocker> Heap;
 //------------------------------------------------------------------------------
 #endif  // HEAP_H__
 
