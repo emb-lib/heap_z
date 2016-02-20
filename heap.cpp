@@ -30,7 +30,7 @@
 //*
 //*-----------------------------------------------------------------------------
 
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  Terms
 //  ~~~~~
 //           
@@ -53,13 +53,14 @@
 // 
 //  mcb.next of the last MCB always points to the first MCB (circular pattern).
 //  mcb.prev of the first MCB points to itself.
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <new>
 #include "heap.h"
 
+//------------------------------------------------------------------------------
 extern std::nothrow_t const std::nothrow = {};
 
 void * operator new(size_t size, std::nothrow_t const &)
@@ -72,7 +73,7 @@ void * operator new(size_t size)
     return Heap.malloc(size);
 }
 
-void operator delete(void * ptr)     // delete allocated storage
+void operator delete(void * ptr)         // delete allocated storage
 {
     Heap.free(ptr);
 }
@@ -86,57 +87,24 @@ extern "C" void free(void * ptr)
 {
     Heap.free(ptr);
 }
-/*
-extern "C" void * _sbrk(size_t n)
-{
-    return 0;
-}
-*/
 //------------------------------------------------------------------------------
-// Heap initialization
-//------------------------------------------------------------------------------
-heap::heap(uint32_t * pool, int size_bytes)
-: start((mcb *)pool)
-, freemem((mcb *)pool)
-{
-    init(start, size_bytes);
-}
-
-void heap::init(mcb * pstart, size_t size_bytes)
-{
-    // Circular pattern 
-    pstart->next = pstart;
-
-    // Pointer to previous MCB points to itself
-    pstart->prev = pstart;
-
-    // ASA size
-    pstart->ts.size = size_bytes - sizeof(mcb);
-    
-    // Set memory chunk free
-    pstart->ts.type = mcb::FREE;
-
-    // After initialization, heap is one free memory chunk with 
-    // ASA size = sizeof(heap) - sizeof(MCB)
-}
-
-/*
-void heap::add(void * pool, int size )
+template<typename guard>
+void heap<guard>::add(void * pool, int size )
 {
     mcb *xptr = (mcb *)pool;
     mcb *tptr = freemem;
-    // Формирование нового MCB в блоке
+    
+    // Init MCB in new chunk
     xptr->next = tptr;
-    xptr->prev = tptr;
+    xptr->prev = xptr;                   // the first mcb in pool always points to itself
     xptr->ts.size = size - sizeof(mcb);
     xptr->ts.type = mcb::FREE;
     // Reinit Primary MCB
     tptr->next = xptr;
-    xptr->prev = xptr; //?????
 }
-*/
-
-heap::mcb * heap::mcb::split(size_t size, heap::mcb * start)
+//------------------------------------------------------------------------------
+template<typename guard>
+typename heap<guard>::mcb * heap<guard>::mcb::split(size_t size, heap<guard>::mcb * start)
 {
     uintptr_t new_mcb_addr = (uintptr_t)this + size;
     mcb *new_mcb = (mcb *)new_mcb_addr;
@@ -158,10 +126,8 @@ heap::mcb * heap::mcb::split(size_t size, heap::mcb * start)
 }
 
 //------------------------------------------------------------------------------
-// malloc()
-//------------------------------------------------------------------------------
-
-void * heap::malloc( size_t size )
+template<typename guard>
+void * heap<guard>::malloc( size_t size )
 {
     // add mcb size and round up to HEAP_ALIGN
     size = (size + sizeof(mcb) + ( HEAP_ALIGN - 1 )) & ~( HEAP_ALIGN - 1 );
@@ -173,7 +139,7 @@ void * heap::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    OS::TMutexLocker Lock(Mutex);
+    scope_guard<guard> Guard(Mutex);
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
@@ -183,8 +149,8 @@ void * heap::malloc( size_t size )
                 ++free_cnt;
             if( tptr->ts.size >= size                                 // Current free ASA size is equal to required size or
                  && tptr->ts.size <= size + sizeof(mcb) + HEAP_ALIGN) // current free ASA size is greater then required size
-                                                                      // and the rest of memory (after splitting) of the current 
-                                                                      // chunk is large enough to allocate MCB + one allocation unit.
+                                                                      // and the rest (after splitting) of current chunk
+                                                                      // is large enough to allocate MCB + one allocation unit.
             {
                 tptr->ts.type = mcb::ALLOCATED;                       // Allocate the chunk
                 Allocated = tptr->pool();
@@ -239,7 +205,8 @@ void * heap::malloc( size_t size )
     return Allocated;
 }
 
-void heap::mcb::merge_with_next(mcb * start)
+template<typename guard>
+void heap<guard>::mcb::merge_with_next(mcb * start)
 {
     // Check Next MCB
     mcb* other = next;
@@ -253,9 +220,8 @@ void heap::mcb::merge_with_next(mcb * start)
 
 }
 //------------------------------------------------------------------------------
-// free()
-//------------------------------------------------------------------------------
-void heap::free(void *pool )
+template<typename guard>
+void heap<guard>::free(void *pool )
 {
     // All pointer values should be checked to hit in RAM, otherwise an exception can occur
     
@@ -300,8 +266,9 @@ void heap::free(void *pool )
     if( tptr < freemem )        // Is freed chunk located berore the fisrt one that was considered free?
         freemem = tptr;         // Update free chunk pointer
 }
-
-heap::summary heap::info()
+//------------------------------------------------------------------------------
+template<typename guard>
+typename heap<guard>::summary  heap<guard>::info()
 {
     summary Result =
     {
@@ -309,11 +276,11 @@ heap::summary heap::info()
         { 0, 0, 0 }
     };
 
-    OS::TMutexLocker Lock(Mutex);
+    scope_guard<guard> Guard(Mutex);
     mcb *pBlock = freemem;
     do
     {
-        summary::info * pInfo = pBlock->ts.type == mcb::FREE ? &Result.Free : &Result.Used;
+        typename summary::info * pInfo = pBlock->ts.type == mcb::FREE ? &Result.Free : &Result.Used;
         ++pInfo->Blocks;
         pInfo->Size += pBlock->ts.size;
         if(pInfo->Block_max_size < pBlock->ts.size)

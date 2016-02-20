@@ -32,7 +32,7 @@
 #ifndef HEAP_H__
 #define HEAP_H__
 
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //  Terms
 //  ~~~~~
 //           
@@ -55,14 +55,28 @@
 // 
 //  mcb.next of the last MCB always points to the first MCB (circular pattern).
 //  mcb.prev of the first MCB points to itself.
-//----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 
 #include <stdint.h>
 #include <stddef.h>
-#include <scmRTOS.h>
+#include "heapcfg.h"
+
+
 //------------------------------------------------------------------------------
-class heap
+template <typename mutex>
+class scope_guard
+{
+public:
+    scope_guard(mutex& m): mx(m) { mx.lock(); }
+    ~scope_guard() { mx.unlock(); }
+private:
+    mutex & mx;
+};
+
+//------------------------------------------------------------------------------
+template <typename guard>
+class heap 
 {
 public:
     // Heap initialization
@@ -124,7 +138,7 @@ private:
         };
 
         mcb *next;         // pointer to the next MCB                                             
-                           // mcb.next of the last MCB always pounts to                           
+                           // mcb.next of the last MCB always points to                           
                            // the first MCB                                                       
         mcb *prev;         // pointer to previous MCB                                             
                            // the first MCB always pounts to itself                               
@@ -150,20 +164,53 @@ private:
                            
     mcb *freemem;          // pointer to the first free MCB      
                            
-    OS::TMutex  Mutex;     // thread safe support for scmRTOS. In case of other RTOS or
-                           // if the project is 'RTOSless' this realization has to be fixed
+    guard Mutex;           // thread-safe support 
+                           
 };
 
+template<typename guard>
 template<size_t size_items>
-heap::heap(uint32_t (& pool)[size_items])
-: start((mcb *)pool)
-, freemem((mcb *)pool)
+heap<guard>::heap(uint32_t (& pool)[size_items])
+    : start((mcb *)pool)
+    , freemem((mcb *)pool)
+    , Mutex()
 {
     init(start, sizeof(pool));
 }
 
 //------------------------------------------------------------------------------
-extern heap Heap;
+// Heap initialization
+//------------------------------------------------------------------------------
+template<typename guard>
+heap<guard>::heap(uint32_t * pool, int size_bytes)
+    : start((mcb *)pool)
+    , freemem((mcb *)pool)
+    , Mutex()
+{
+    init(start, size_bytes);
+}
+
+template<typename guard>
+void heap<guard>::init(mcb * pstart, size_t size_bytes)
+{
+    // Circular pattern 
+    pstart->next = pstart;
+
+    // Pointer to previous MCB points to itself
+    pstart->prev = pstart;
+
+    // ASA size
+    pstart->ts.size = size_bytes - sizeof(mcb);
+    
+    // Set memory chunk free
+    pstart->ts.type = mcb::FREE;
+
+    // After initialization, heap is one free memory chunk with 
+    // ASA size = sizeof(heap) - sizeof(MCB)
+}
+
+//------------------------------------------------------------------------------
+extern heap<heap_guard> Heap;
 //------------------------------------------------------------------------------
 #endif  // HEAP_H__
 
