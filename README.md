@@ -1,4 +1,4 @@
-# heap_z
+# heap_z memory manager
 Lightweight and fast free memory manager suitable for embedded applications
 
 ## Usage
@@ -22,5 +22,7 @@ heap<heap_guard> Heap(HeapPool);
 
 That's all, heap functions (malloc(), free(), new , delete etc.) can be used in ordinary manner.
 
+See [wiki page](https://github.com/emb-lib/heap_z/wiki) for additional information.
+
 <hr>
-<a name="footnote1"></a>[1] See [description for details](https://github.com/emb-lib/heap_z/wiki/thread-safe guard configuration)
+<a name="footnote1"></a>[1] See [thread-safe guard description page for details](https://github.com/emb-lib/heap_z/wiki/thread-safe guard configuration)
