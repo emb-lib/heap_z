@@ -50,11 +50,20 @@
 // 
 //  Heap Structure
 //  ~~~~~~~~~~~~~~
-// 
-// {MCB_0:ASA_0}{MCB_1:ASA_1}...{MCB_N:ASA_N}
-// 
+//  start-+
+//        |
+//        |  +----------------------------------------------+
+//        V  V                                              |
+//   +--{MCB_0:ASA_0}<==>{MCB_1:ASA_1}<=...=>{MCB_N:ASA_N}--+
+//   |     ^                             ^
+//   +-----+                             |
+//                                       |
+//  freemem------------------------------+
+//
 //  mcb.next of the last MCB always points to the first MCB (circular pattern).
 //  mcb.prev of the first MCB points to itself.
+//  start points to first MCB
+//  freemem points to first free MCB
 //------------------------------------------------------------------------------
 
 
