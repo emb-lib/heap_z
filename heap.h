@@ -173,7 +173,7 @@ private:
                            
     mcb *freemem;          // pointer to the first free MCB      
                            
-    guard Mutex;           // thread-safe support 
+    guard Guard;           // thread-safe support 
                            
 };
 
@@ -183,7 +183,7 @@ template<size_t size_items>
 heap<guard>::heap(uint32_t (& pool)[size_items])
     : start((mcb *)pool)
     , freemem((mcb *)pool)
-    , Mutex()
+    , Guard()
 {
     init(start, sizeof(pool));
 }
@@ -192,7 +192,7 @@ template<typename guard>
 heap<guard>::heap(uint32_t * pool, int size_bytes)
     : start((mcb *)pool)
     , freemem((mcb *)pool)
-    , Mutex()
+    , Guard()
 {
     init(start, size_bytes);
 }
@@ -226,7 +226,7 @@ typename heap<guard>::summary  heap<guard>::info()
         { 0, 0, 0 }
     };
 
-    scope_guard<guard> Guard(Mutex);
+    scope_guard<guard> ScopeGuard(Guard);
     mcb *pBlock = freemem;
     do
     {
@@ -268,7 +268,7 @@ void heap<guard>::free(void *pool )
     mcb *xptr;
     mcb *tptr = (mcb *)pool - 1;
 
-    OS::TMutexLocker Lock(Mutex);
+    scope_guard<guard> ScopeGuard(Guard);
     
     // Crosscheck for valid values
     xptr = tptr->prev;
@@ -353,7 +353,7 @@ void * heap<guard>::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    scope_guard<guard> Guard(Mutex);
+    scope_guard<guard> Guard(Guard);
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
