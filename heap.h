@@ -90,9 +90,9 @@ class heap
 public:
     // Heap initialization
     template<size_t size_items>
-    heap(uint32_t (& pool)[size_items]);
+    heap(int (& pool)[size_items]);
 
-    heap(uint32_t * pool, int size_bytes);
+    heap(int * pool, int size_bytes);
 
     // Attach separate memory pool to the heap
     void add(void * pool, int size );
@@ -129,7 +129,7 @@ private:
     // Scan through all free memory chunks to find out
     // the chunk which satisfy to required size
     static bool   const USE_FULL_SCAN = 1;
-    static size_t const HEAP_ALIGN    = sizeof(uint32_t);
+    static size_t const HEAP_ALIGN    = sizeof(int);
 
     // Memory Control Block (MCB)
     //--------------------------------------------------------------------------
@@ -180,7 +180,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename guard>
 template<size_t size_items>
-heap<guard>::heap(uint32_t (& pool)[size_items])
+heap<guard>::heap(int (& pool)[size_items])
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
@@ -189,7 +189,7 @@ heap<guard>::heap(uint32_t (& pool)[size_items])
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-heap<guard>::heap(uint32_t * pool, int size_bytes)
+heap<guard>::heap(int * pool, int size_bytes)
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
