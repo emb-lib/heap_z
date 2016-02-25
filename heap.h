@@ -73,14 +73,14 @@
 
 
 //------------------------------------------------------------------------------
-template <typename mutex>
+template <typename guard>
 class scope_guard
 {
 public:
-    scope_guard(mutex& m): mx(m) { mx.lock(); }
-    ~scope_guard() { mx.unlock(); }
+    scope_guard(guard& g): gd(g) { gd.lock(); }
+    ~scope_guard() { gd.unlock(); }
 private:
-    mutex & mx;
+    guard & gd;
 };
 
 //------------------------------------------------------------------------------
@@ -90,9 +90,9 @@ class heap
 public:
     // Heap initialization
     template<size_t size_items>
-    heap(uint32_t (& pool)[size_items]);
+    heap(int (& pool)[size_items]);
 
-    heap(uint32_t * pool, int size_bytes);
+    heap(int * pool, int size_bytes);
 
     // Attach separate memory pool to the heap
     void add(void * pool, int size );
@@ -129,7 +129,7 @@ private:
     // Scan through all free memory chunks to find out
     // the chunk which satisfy to required size
     static bool   const USE_FULL_SCAN = 1;
-    static size_t const HEAP_ALIGN    = sizeof(uint32_t);
+    static size_t const HEAP_ALIGN    = sizeof(int);
 
     // Memory Control Block (MCB)
     //--------------------------------------------------------------------------
@@ -180,7 +180,7 @@ private:
 //------------------------------------------------------------------------------
 template<typename guard>
 template<size_t size_items>
-heap<guard>::heap(uint32_t (& pool)[size_items])
+heap<guard>::heap(int (& pool)[size_items])
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
@@ -189,7 +189,7 @@ heap<guard>::heap(uint32_t (& pool)[size_items])
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-heap<guard>::heap(uint32_t * pool, int size_bytes)
+heap<guard>::heap(int * pool, int size_bytes)
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
@@ -226,7 +226,7 @@ typename heap<guard>::summary  heap<guard>::info()
         { 0, 0, 0 }
     };
 
-    scope_guard<guard> ScopeGuard(Guard);
+    scope_guard<guard> ScopeGuard(Guard);   // protect the following code from asyncronous access
     mcb *pBlock = freemem;
     do
     {
@@ -268,7 +268,7 @@ void heap<guard>::free(void *pool )
     mcb *xptr;
     mcb *tptr = (mcb *)pool - 1;
 
-    scope_guard<guard> ScopeGuard(Guard);
+    scope_guard<guard> ScopeGuard(Guard);    // protect the following code from asyncronous access
     
     // Crosscheck for valid values
     xptr = tptr->prev;
@@ -353,7 +353,7 @@ void * heap<guard>::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    scope_guard<guard> Guard(Guard);
+    scope_guard<guard> Guard(Guard);                                  // protect the following code from asyncronous access
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
