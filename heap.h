@@ -82,6 +82,24 @@ public:
 private:
     guard & gd;
 };
+//------------------------------------------------------------------------------
+typedef struct 
+{ 
+    int * addr; 
+    size_t sz; 
+} 
+pool_tag_t;
+
+template <size_t size_bytes>
+struct pool
+{
+    operator pool_tag_t() 
+    { 
+        pool_tag_t pt = { Pool, size_bytes };
+        return pt;
+    };
+    int Pool[size_bytes/sizeof(int)];
+};
 
 //------------------------------------------------------------------------------
 template <typename guard>
@@ -93,6 +111,8 @@ public:
     heap(int (& pool)[size_items]);
 
     heap(int * pool, int size_bytes);
+    
+    heap(pool_tag_t pt);
 
     // Attach separate memory pool to the heap
     void add(void * pool, int size );
@@ -195,6 +215,15 @@ heap<guard>::heap(int * pool, int size_bytes)
     , Guard()
 {
     init(start, size_bytes);
+}
+//------------------------------------------------------------------------------
+template<typename guard>
+heap<guard>::heap(pool_tag_t pt)
+    : start((mcb *)pt.addr)
+    , freemem((mcb *)pt.addr)
+    , Guard()
+{
+    init(start, pt.sz);
 }
 //------------------------------------------------------------------------------
 template<typename guard>
