@@ -84,6 +84,13 @@ private:
 };
 
 //------------------------------------------------------------------------------
+template <size_t size_bytes>
+struct pool
+{
+    int Pool[size_bytes/sizeof(int)];
+};
+
+//------------------------------------------------------------------------------
 template <typename guard>
 class heap 
 {
@@ -91,6 +98,9 @@ public:
     // Heap initialization
     template<size_t size_items>
     heap(int (& pool)[size_items]);
+
+    template<size_t size_bytes>
+    heap(pool<size_bytes> & pool_obj);
 
     heap(int * pool, int size_bytes);
 
@@ -187,6 +197,7 @@ heap<guard>::heap(int (& pool)[size_items])
 {
     init(start, sizeof(pool));
 }
+
 //------------------------------------------------------------------------------
 template<typename guard>
 heap<guard>::heap(int * pool, int size_bytes)
@@ -196,6 +207,18 @@ heap<guard>::heap(int * pool, int size_bytes)
 {
     init(start, size_bytes);
 }
+
+//------------------------------------------------------------------------------
+template<typename guard>
+template<size_t size_bytes>
+heap<guard>::heap(pool<size_bytes> & pool_obj)
+    : start((mcb *)pool_obj.Pool)
+    , freemem((mcb *)pool_obj.Pool)
+    , Guard()
+{
+    init(start, sizeof(pool_obj));
+}
+
 //------------------------------------------------------------------------------
 template<typename guard>
 void heap<guard>::init(mcb * pstart, size_t size_bytes)
