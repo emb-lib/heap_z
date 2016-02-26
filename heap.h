@@ -214,7 +214,7 @@ template<size_t size_bytes>
 heap<guard>::heap(pool<size_bytes> & pool_obj)
     : start((mcb *)pool_obj.Pool)
     , freemem((mcb *)pool_obj.Pool)
-    , Mutex()
+    , Guard()
 {
     init(start, sizeof(pool_obj));
 }
