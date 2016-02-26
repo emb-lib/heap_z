@@ -376,7 +376,7 @@ void * heap<guard>::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    scope_guard<guard> Guard(Guard);                                  // protect the following code from asyncronous access
+    scope_guard<guard> ScopeGuard(Guard);                             // protect the following code from asyncronous access
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
