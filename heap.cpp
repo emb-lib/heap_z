@@ -69,32 +69,34 @@
 #include <new>
 #include "heap.h"
 
+using namespace heap;
+
 //------------------------------------------------------------------------------
 extern std::nothrow_t const std::nothrow = {};
 
 void * operator new(size_t size, std::nothrow_t const &)
 {
-    return Heap.malloc(size);
+    return Manager.malloc(size);
 }
 
 void * operator new(size_t size)
 {
-    return Heap.malloc(size);
+    return Manager.malloc(size);
 }
 
 void operator delete(void * ptr)         // delete allocated storage
 {
-    Heap.free(ptr);
+    Manager.free(ptr);
 }
 
 extern "C" void * malloc(size_t size)
 {
-    return Heap.malloc(size);
+    return Manager.malloc(size);
 }
 
 extern "C" void free(void * ptr)
 {
-    Heap.free(ptr);
+    Manager.free(ptr);
 }
 //------------------------------------------------------------------------------
 
