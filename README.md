@@ -8,7 +8,7 @@ At first, memory pool must be declared, for example:
 #include <stdint.h>
 #include <heap.h>
 
-heap::pool<4096> HeapPool;
+heap::pool<4096> HeapPool;   // size in bytes
 ```
 
 The second, declare heap object with `heap_guard`<sup>[1](#footnote1)</sup>:
