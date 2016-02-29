@@ -71,28 +71,40 @@
 #include <stddef.h>
 #include "heapcfg.h"
 
+namespace heap 
+{
 
 //------------------------------------------------------------------------------
-template <typename mutex>
+template <typename guard>
 class scope_guard
 {
 public:
-    scope_guard(mutex& m): mx(m) { mx.lock(); }
-    ~scope_guard() { mx.unlock(); }
+    scope_guard(guard& g): gd(g) { gd.lock(); }
+    ~scope_guard() { gd.unlock(); }
 private:
-    mutex & mx;
+    guard & gd;
+};
+
+//------------------------------------------------------------------------------
+template <size_t size_bytes>
+struct pool
+{
+    int Pool[size_bytes/sizeof(int)];
 };
 
 //------------------------------------------------------------------------------
 template <typename guard>
-class heap 
+class manager
 {
 public:
     // Heap initialization
     template<size_t size_items>
-    heap(uint32_t (& pool)[size_items]);
+    manager(int (& pool)[size_items]);
 
-    heap(uint32_t * pool, int size_bytes);
+    template<size_t size_bytes>
+    manager(pool<size_bytes> & pool_obj);
+
+    manager(int * pool, int size_bytes);
 
     // Attach separate memory pool to the heap
     void add(void * pool, int size );
@@ -129,7 +141,7 @@ private:
     // Scan through all free memory chunks to find out
     // the chunk which satisfy to required size
     static bool   const USE_FULL_SCAN = 1;
-    static size_t const HEAP_ALIGN    = sizeof(uint32_t);
+    static size_t const HEAP_ALIGN    = sizeof(int);
 
     // Memory Control Block (MCB)
     //--------------------------------------------------------------------------
@@ -180,25 +192,38 @@ private:
 //------------------------------------------------------------------------------
 template<typename guard>
 template<size_t size_items>
-heap<guard>::heap(uint32_t (& pool)[size_items])
+manager<guard>::manager(int (& pool)[size_items])
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
 {
     init(start, sizeof(pool));
 }
+
 //------------------------------------------------------------------------------
 template<typename guard>
-heap<guard>::heap(uint32_t * pool, int size_bytes)
+manager<guard>::manager(int * pool, int size_bytes)
     : start((mcb *)pool)
     , freemem((mcb *)pool)
     , Guard()
 {
     init(start, size_bytes);
 }
+
 //------------------------------------------------------------------------------
 template<typename guard>
-void heap<guard>::init(mcb * pstart, size_t size_bytes)
+template<size_t size_bytes>
+manager<guard>::manager(pool<size_bytes> & pool_obj)
+    : start((mcb *)pool_obj.Pool)
+    , freemem((mcb *)pool_obj.Pool)
+    , Guard()
+{
+    init(start, sizeof(pool_obj));
+}
+
+//------------------------------------------------------------------------------
+template<typename guard>
+void manager<guard>::init(mcb * pstart, size_t size_bytes)
 {
     // Circular pattern 
     pstart->next = pstart;
@@ -218,7 +243,7 @@ void heap<guard>::init(mcb * pstart, size_t size_bytes)
 
 //------------------------------------------------------------------------------
 template<typename guard>
-typename heap<guard>::summary  heap<guard>::info()
+typename manager<guard>::summary  manager<guard>::info()
 {
     summary Result =
     {
@@ -226,7 +251,7 @@ typename heap<guard>::summary  heap<guard>::info()
         { 0, 0, 0 }
     };
 
-    scope_guard<guard> ScopeGuard(Guard);
+    scope_guard<guard> ScopeGuard(Guard);   // protect the following code from asyncronous access
     mcb *pBlock = freemem;
     do
     {
@@ -242,7 +267,7 @@ typename heap<guard>::summary  heap<guard>::info()
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-void heap<guard>::mcb::merge_with_next(mcb * start)
+void manager<guard>::mcb::merge_with_next(mcb * start)
 {
     // Check Next MCB
     mcb* other = next;
@@ -257,7 +282,7 @@ void heap<guard>::mcb::merge_with_next(mcb * start)
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-void heap<guard>::free(void *pool )
+void manager<guard>::free(void *pool )
 {
     // All pointer values should be checked to hit in RAM, otherwise an exception can occur
     
@@ -268,7 +293,7 @@ void heap<guard>::free(void *pool )
     mcb *xptr;
     mcb *tptr = (mcb *)pool - 1;
 
-    scope_guard<guard> ScopeGuard(Guard);
+    scope_guard<guard> ScopeGuard(Guard);    // protect the following code from asyncronous access
     
     // Crosscheck for valid values
     xptr = tptr->prev;
@@ -303,7 +328,7 @@ void heap<guard>::free(void *pool )
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-void heap<guard>::add(void * pool, int size )
+void manager<guard>::add(void * pool, int size )
 {
     mcb *xptr = (mcb *)pool;
     mcb *tptr = freemem;
@@ -318,7 +343,7 @@ void heap<guard>::add(void * pool, int size )
 }
 //------------------------------------------------------------------------------
 template<typename guard>
-typename heap<guard>::mcb * heap<guard>::mcb::split(size_t size, heap<guard>::mcb * start)
+typename manager<guard>::mcb * manager<guard>::mcb::split(size_t size, manager<guard>::mcb * start)
 {
     uintptr_t new_mcb_addr = (uintptr_t)this + size;
     mcb *new_mcb = (mcb *)new_mcb_addr;
@@ -341,7 +366,7 @@ typename heap<guard>::mcb * heap<guard>::mcb::split(size_t size, heap<guard>::mc
 
 //------------------------------------------------------------------------------
 template<typename guard>
-void * heap<guard>::malloc( size_t size )
+void * manager<guard>::malloc( size_t size )
 {
     // add mcb size and round up to HEAP_ALIGN
     size = (size + sizeof(mcb) + ( HEAP_ALIGN - 1 )) & ~( HEAP_ALIGN - 1 );
@@ -353,7 +378,7 @@ void * heap<guard>::malloc( size_t size )
     void *Allocated;
     size_t free_cnt = 0;
 
-    scope_guard<guard> Guard(Guard);
+    scope_guard<guard> ScopeGuard(Guard);                             // protect the following code from asyncronous access
     mcb *tptr = freemem;                                              // Scan begins from the first free MCB
     for(;;)
     {
@@ -420,7 +445,10 @@ void * heap<guard>::malloc( size_t size )
 }
 //------------------------------------------------------------------------------
 
-extern heap<heap_guard> Heap;
+extern manager<heap_guard> Manager;
+
+} // namespace heap
 //------------------------------------------------------------------------------
+
 #endif  // HEAP_H__
 

@@ -6,18 +6,15 @@ At first, memory pool must be declared, for example:
 
 ```C
 #include <stdint.h>
+#include <heap.h>
 
-uint32_t HeapPool[4096/sizeof(uint32_t)];
+heap::pool<4096> HeapPool;   // size in bytes
 ```
 
-The second, declare heap object<sup>[1](#footnote1)</sup>:
+The second, declare heap object with `heap_guard`<sup>[1](#footnote1)</sup>:
 
 ```C++
-heap<heap_guard> Heap(HeapPool, sizeof(HeapPool));
-```
-Or if memory pool object declared in the same scope (i.e. type and size of the object are known), there is more short alternative.:
-```C++
-heap<heap_guard> Heap(HeapPool);
+heap::manager<heap_guard> heap::Manager(HeapPool);
 ```
 
 That's all, heap functions (malloc(), free(), new , delete etc.) can be used in ordinary manner.
